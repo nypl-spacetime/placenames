@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Use correct character set. -->
+  <meta charset="utf-8">
+  <!-- Tell IE to use the latest, best version (or Chrome Frame if pre-IE11). -->
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+  <!-- Make the application on mobile take up the full browser screen and disable user scaling. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+  <title>PIC - Photographers’ Identities Catalog</title>
+  <script src="//api.tiles.mapbox.com/mapbox.js/v1.5.0/mapbox.js"></script>
+  <script src="http://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/0.4.0/leaflet.markercluster.js"></script>
+  <style>
+      @import url(//api.tiles.mapbox.com/mapbox.js/v1.5.0/mapbox.css);
+body{ margin:0; }
+
+#map {
+    margin: 0;
+    position: absolute;
+    width:100%;
+    top:0;
+    bottom: 0;
+}
+
+.icon {
+  width: 36px;
+  height: 36px;
+  text-align: center;
+  line-height: 30px;
+  background: #b3b3b3;
+  border: 1px solid black;
+  border-radius: 20px;
+}
+
+/* leaflet markercluster stuff */
+.leaflet-cluster-anim .leaflet-marker-icon, .leaflet-cluster-anim .leaflet-marker-shadow {
+    -webkit-transition: -webkit-transform 0.3s ease-out, opacity 0.3s ease-in;
+    -moz-transition: -moz-transform 0.3s ease-out, opacity 0.3s ease-in;
+    -o-transition: -o-transform 0.3s ease-out, opacity 0.3s ease-in;
+    transition: transform 0.3s ease-out, opacity 0.3s ease-in;
+}
+  </style>
+</head>
+<body>
+<div id="map"></div>
+    <script type="text/javascript">
+var attribution_nypl = 'Map via <a href="http://maps.nypl.org">NYPL</a>';
+
+// manhattan 1857
+var ny_1857 = L.tileLayer( 'http://maptiles.nypl.org/859/{z}/{x}/{y}.png',{attribution: attribution_nypl,minZoom:12,maxZoom:21});
+
+// brooklyn 1855
+var bk_1855 = L.tileLayer( 'http://maptiles.nypl.org/860/{z}/{x}/{y}.png',{attribution: attribution_nypl,minZoom:12,maxZoom:21});
+
+var attribution_mapbox = 'Map via <a href="http://openstreetmap.org">OpenStreetMap</a>, <a href="http://mapbox.com">Mapbox</a>';
+
+// present
+var ny_2014 = L.tileLayer( 'https://{s}.tiles.mapbox.com/v3/{id}/{z}/{x}/{y}.png',{id: 'examples.map-20v6611k',attribution: attribution_mapbox});
+
+var oldtiles = [ny_1857, bk_1855]
+// create map with default tileset
+var map = L.map('map', {layers:oldtiles, maxZoom:21, minZoom:13});
+
+// for the toggler
+var baseMaps = {
+  "Present": ny_2014,
+  "1857-9": oldtiles
+};
+
+// the geojson as it comes from the text document
+var jsonurl = 'https://gist.githubusercontent.com/mgiraldo/cc86b6b043f3ad16a719/raw/78e146a81625ccdd8f3a72b8ea16756dcd641e28/merged.geojson';
+
+var overlays, geodata, geolayer, control;
+
+var markers;
+
+function showMap(geostring) {
+    // parse the geojson string to a proper json structure
+    geodata = JSON.parse(geostring);
+  
+    markers = new L.MarkerClusterGroup({
+      maxClusterRadius: 100,
+      disableClusteringAtZoom: 21,
+      iconCreateFunction: function(cluster) {
+        return new L.DivIcon({ 
+          html: '<b>' + cluster.getChildCount() + '</b>',
+          className: "icon",
+          iconSize: L.point(35, 35)
+        });
+      }
+    });
+  
+    // now make it understandable by leaflet
+    geolayer = L.geoJson(geodata, {onEachFeature: showPopup});
+    
+    markers.addLayer(geolayer);
+
+    // add the points to the map
+    markers.addTo(map);
+    
+    // a data layers variable for the toggler
+    overlays = {
+        "Place names": markers
+    }
+    
+    // the tileset switcher control
+    control = L.control.layers(baseMaps, overlays)
+    
+    control.addTo(map);
+    
+    // zoom the map to the bounds of the points
+    map.fitBounds(geolayer.getBounds());
+}
+
+function showPopup(feature, layer) {
+    var key, val;
+    var content = [];
+    for (key in feature.properties) {
+        val = feature.properties[key];
+        content.push(val);
+    }
+    layer.bindPopup(content.join("<br />"));
+}
+
+var client = new XMLHttpRequest();
+client.open('GET', jsonurl);
+client.onloadend = function() {
+  showMap(client.responseText);
+}
+client.send();
+    </script>
+</body>
+</html>
