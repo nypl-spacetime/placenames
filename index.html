@@ -1,225 +1,34 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <!-- Use correct character set. -->
-  <meta charset="utf-8">
-  <!-- Tell IE to use the latest, best version (or Chrome Frame if pre-IE11). -->
-  <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
-  <!-- Make the application on mobile take up the full browser screen and disable user scaling. -->
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
-  <title>Church, Druggist, Factory, Bank</title>
-  <script src="//api.tiles.mapbox.com/mapbox.js/v1.5.0/mapbox.js"></script>
-  <style>
-      @import url(//api.tiles.mapbox.com/mapbox.js/v1.5.0/mapbox.css);
-body{ margin:0; }
+<html >
+  <head>
+    <meta charset="UTF-8">
 
-#map {
-    margin: 0;
-    position: absolute;
-    width:100%;
-    top:0;
-    bottom: 0;
-}
 
-#search {
-  position: absolute;
-  background: rgba(255,255,255,1);
-  right: 120px;
-  top: 10px;
-  padding: 5px;
-  font-family: Verdana;
-  font-size: 12px;
-  border-radius: 3px;
-  border: 1px solid rgba(0, 0, 0, 0.4);
-}
+    <title>Church, Druggist, Factory, Bank</title>
+    <meta name="viewport" content="width=device-width">
+    
+    
+    <link rel='stylesheet prefetch' href='https://api.tiles.mapbox.com/mapbox.js/v1.5.0/mapbox.css'>
 
-#search input {
-  font-size: 16px;
-  width: 100%;
-  box-sizing: border-box;
-}
+        <link rel="stylesheet" href="css/style.css">
 
-.leaflet-control-layers label span.key {
-  display: inline-block;
-  background: red;
-  width: 10px;
-  height: 10px;
-  margin-right: 4px;
-  margin-left: 0;
-  border-radius: 10px;
-}
-/* leaflet responsive */
-@media screen and (max-width: 375px){
-  .leaflet-top.leaflet-left {
-    top: 50px;
-  }
+    
+    
+    
+  </head>
 
-  #search {
-    left: 10px;
-  }
-}
-/* leaflet markercluster stuff */
-.leaflet-cluster-anim .leaflet-marker-icon, .leaflet-cluster-anim .leaflet-marker-shadow {
-    -webkit-transition: -webkit-transform 0.3s ease-out, opacity 0.3s ease-in;
-    -moz-transition: -moz-transform 0.3s ease-out, opacity 0.3s ease-in;
-    -o-transition: -o-transform 0.3s ease-out, opacity 0.3s ease-in;
-    transition: transform 0.3s ease-out, opacity 0.3s ease-in;
-}
-  </style>
-</head>
-<body>
-<div id="map"></div>
+  <body>
+
+    <div id="map"></div>
 <div id="search">
   <input type="text" placeholder="keyword (eg: brewery)" id="keyword" />
 </div>
-    <script type="text/javascript">
-var attribution_nypl = 'Map via <a href="http://maps.nypl.org">NYPL</a>';
+    <script src='https://api.tiles.mapbox.com/mapbox.js/v1.5.0/mapbox.js'></script>
 
-// manhattan 1857
-var ny_1857 = L.tileLayer( 'http://maptiles.nypl.org/859/{z}/{x}/{y}.png',{attribution: attribution_nypl});
+        <script src="js/index.js"></script>
 
-// brooklyn 1855
-var bk_1855 = L.tileLayer( 'http://maptiles.nypl.org/860/{z}/{x}/{y}.png',{attribution: attribution_nypl});
-
-var attribution_mapbox = 'Map via <a href="http://openstreetmap.org">OpenStreetMap</a>, <a href="http://mapbox.com">Mapbox</a>';
-
-// present
-var ny_2014 = L.tileLayer( 'https://{s}.tiles.mapbox.com/v3/{id}/{z}/{x}/{y}.png',{id: 'nypllabs.7f17c2d1',attribution: attribution_mapbox});
-
-var oldMaps = L.layerGroup([ny_1857, bk_1855]);
-
-
-// for the toggler
-var baseMaps = {
-  "Present": ny_2014,
-  "1857-9": oldMaps
-};
-
-// the tileset switcher control
-var control = L.control.layers(baseMaps,{}, {collapsed:false});
-// create map with default tileset
-var map = L.map('map', {layers:ny_2014, maxZoom:21, minZoom:12, scrollWheelZoom:true});
-
-control.addTo(map);
-
-// the geojson as it comes from the text document
-var jsonurl = 'merged.geojson';
-
-var topNames, geodata, geolayer, control;
-var words, colors, overlays;
-var markers;
-var bounds = new L.LatLngBounds();
-var searchOverlay;
-var overlays = [];
-words = ["church","coal","office","house","drug","factory","school","stable","lumber","works","bank"];
-colors = ["#1f78b4","#888","#b2df8a","#33a02c","#fb9a99","#e31a1c","#fdbf6f","#ff7f00","#cab2d6","#6a3d9a","#b15928","#000"];
-
-function showMap(geostring) {
-  // parse the geojson string to a proper json structure
-  geodata = JSON.parse(geostring);
-  
-  console.log("found", geodata.features.length,"places");
-
-  legend = document.getElementById("legend");
-
-  for (var i=0; i<words.length; i++) {
-    var c = colors[i];
-    var t = words[i];
-    var html = '<span class="key" style="background:'+c+'"></span>' + t;
-    // overlay
-    var places = extractPlaces(geodata, t, i);
-    var overlay = overlayForPlaces(places);
-    overlay.addTo(map);
-    bounds.extend(overlay.getBounds());
-    control.addOverlay(overlay, html);
-    overlays.push(overlay);
-  }
-
-  geolayer = L.geoJson(topNames);
     
-  // zoom the map to the bounds of the points
-  map.fitBounds(bounds);
-  
-  document.getElementById("keyword").onchange = onKeywordSubmitted;
-}
-
-function showPopup(feature, layer) {
-    var key, val;
-    var content = [];
-    for (key in feature.properties) {
-        val = feature.properties[key];
-        if (key=="consensus") content.push(val);
-    }
-    layer.bindPopup(content.join("<br />"));
-}
-
-function extractPlaces(raw, place, index) {
-  result = {}
-  result.type = raw.type;
-  result.features = [];
-  for (var i=0; i<raw.features.length; i++) {
-    if (raw.features[i].properties.consensus.toLowerCase().indexOf(place) != -1) {
-      raw.features[i].properties.index = index;
-      result.features.push(raw.features[i]);
-    }
-  }
-  return result;
-}
-
-var client = new XMLHttpRequest();
-client.open('GET', jsonurl);
-client.onloadend = function() {
-  showMap(client.responseText);
-}
-client.send();
-
-function hidePopular() {
-  for (var o in overlays) {
-    var layer = overlays[o];
-    if(map.hasLayer(layer)) {
-      map.removeLayer(layer);
-    }
-  }
-}
-
-function search(keyword) {
-  if (searchOverlay) {
-    map.removeLayer(searchOverlay);
-  }
-  var places = extractPlaces(geodata, keyword, colors.length-1);
-  if (places.features.length==0) return;
-  searchOverlay = overlayForPlaces(places);
-  searchOverlay.addTo(map);
-  map.fitBounds(searchOverlay.getBounds());
-}
-
-function onKeywordSubmitted(event) {
-  clearMap();
-  var keyword = event.target.value.trim().toLowerCase();
-  event.target.value = keyword;
-  if (keyword != "") search(keyword);
-}
-
-function clearMap() {
-  hidePopular();
-  if (searchOverlay) {
-    map.removeLayer(searchOverlay);
-  }
-}
-
-function overlayForPlaces(places) {
-  return L.geoJson(places, {
-    pointToLayer: function (f,latlon) {
-      return L.circle(latlon, 10, {
-        color: colors[f.properties.index],
-        fillOpacity: 0.1,
-        stroke: colors[f.properties.index],
-        strokeWidth: 1,
-        strokeOpacity: 1
-      });
-    },
-    onEachFeature: showPopup
-  });
-}    </script>
-</body>
+    
+    
+  </body>
 </html>
